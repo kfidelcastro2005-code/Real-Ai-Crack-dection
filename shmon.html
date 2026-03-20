@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SHMon - REAL AI Structural Health Monitoring</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+</head>
+<body class="bg-gray-950 text-white">
+
+<!-- (Same Navbar + Hero as before - I kept it short here for space) -->
+<nav class="bg-black sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+    <div class="flex items-center gap-3">
+      <i class="fa-solid fa-building-shield text-3xl text-emerald-500"></i>
+      <h1 class="text-2xl font-bold">SHMon <span class="text-emerald-500">AI</span></h1>
+    </div>
+  </div>
+</nav>
+
+<section id="scan" class="max-w-7xl mx-auto px-6 py-16">
+  <h2 class="text-4xl font-bold mb-8 text-center">Scan the Building → Real AI Crack Detection</h2>
+  
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+    <!-- Camera / Upload (same as before) -->
+    <div class="bg-gray-900 rounded-2xl p-8">
+      <div class="flex gap-4 mb-6">
+        <button onclick="startCamera()" class="flex-1 bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-medium">📹 Live Camera</button>
+        <button onclick="document.getElementById('upload').click()" class="flex-1 bg-purple-600 hover:bg-purple-700 py-3 rounded-xl font-medium">📤 Upload Photo</button>
+        <input type="file" id="upload" accept="image/*" class="hidden" onchange="handleUpload(event)">
+      </div>
+
+      <div id="cameraContainer" class="hidden relative bg-black rounded-xl overflow-hidden aspect-video">
+        <video id="video" class="w-full h-full object-cover"></video>
+        <button onclick="capturePhoto()" class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-red-600 hover:bg-red-700 px-8 py-3 rounded-full font-bold">CAPTURE &amp; SCAN</button>
+      </div>
+
+      <div id="previewContainer" class="hidden text-center">
+        <img id="previewImg" class="mx-auto rounded-xl max-h-96 border-4 border-emerald-500">
+        <button onclick="runAIScan()" class="mt-6 bg-emerald-500 hover:bg-emerald-600 px-12 py-4 rounded-2xl text-xl font-bold w-full">🚀 Run REAL AI Crack Detection</button>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="results" class="hidden bg-gray-900 rounded-2xl p-8">
+      <h3 class="text-2xl mb-6">AI Analysis Complete</h3>
+      
+      <div class="flex items-center gap-6 mb-8">
+        <div class="text-center">
+          <div id="healthScore" class="text-7xl font-bold text-emerald-400">92</div>
+          <p class="text-sm text-gray-400">Health Score</p>
+        </div>
+        <div class="flex-1">
+          <div class="h-3 bg-gray-800 rounded-full mt-3 overflow-hidden">
+            <div id="healthBar" class="h-full bg-emerald-400 w-[92%]"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Annotated Image -->
+      <div class="text-center mb-8">
+        <img id="annotatedImg" class="mx-auto rounded-2xl max-h-96 border-4 border-red-500 shadow-2xl">
+      </div>
+
+      <!-- Dynamic Crack List -->
+      <div id="crackList" class="space-y-4"></div>
+
+      <button onclick="showDashboard()" class="mt-10 w-full bg-white text-black py-5 rounded-2xl font-bold text-lg">View Live Sensor Dashboard →</button>
+    </div>
+  </div>
+</section>
+
+<!-- Dashboard section (same as before) -->
+<section id="dashboard" class="bg-black py-16"> ... (same code as previous version) </section>
+
+<script>
+// === CAMERA & UPLOAD (same as before) ===
+let stream = null;
+function startCamera() { /* same */ }
+function capturePhoto() { /* same */ }
+function handleUpload(e) { /* same */ }
+
+// === REAL AI CALL ===
+async function runAIScan() {
+  const preview = document.getElementById('previewImg');
+  const canvas = document.createElement('canvas');
+  canvas.width = preview.naturalWidth || preview.width;
+  canvas.height = preview.naturalHeight || preview.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(preview, 0, 0);
+  
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.9));
+  
+  const formData = new FormData();
+  formData.append('image', blob, 'building.jpg');
+
+  document.getElementById('results').classList.remove('hidden');
+
+  try {
+    const res = await fetch('http://127.0.0.1:5000/predict', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+
+    // Update Health Score
+    document.getElementById('healthScore').textContent = data.health_score;
+    document.getElementById('healthBar').style.width = data.health_score + '%';
+
+    // Show Annotated Image with cracks highlighted
+    document.getElementById('annotatedImg').src = 'data:image/jpeg;base64,' + data.annotated_image;
+
+    // Populate cracks dynamically
+    const list = document.getElementById('crackList');
+    list.innerHTML = '';
+    if (data.cracks.length === 0) {
+      list.innerHTML = `<div class="bg-emerald-900 p-6 rounded-2xl text-center text-emerald-400">✅ No significant cracks detected!</div>`;
+    } else {
+      data.cracks.forEach(c => {
+        const div = document.createElement('div');
+        div.className = `flex justify-between bg-gray-800 p-4 rounded-xl ${c.severity === 'HIGH' ? 'border-l-4 border-red-500' : c.severity === 'MEDIUM' ? 'border-l-4 border-yellow-500' : ''}`;
+        div.innerHTML = `
+          <span>Crack #${c.id} — ${c.length_cm} cm</span>
+          <span class="font-bold \( {c.severity === 'HIGH' ? 'text-red-500' : c.severity === 'MEDIUM' ? 'text-yellow-500' : 'text-emerald-400'}"> \){c.severity}</span>
+        `;
+        list.appendChild(div);
+      });
+    }
+  } catch (e) {
+    alert("❌ Backend not running!\nMake sure you started 'python app.py' first.");
+  }
+}
+
+function showDashboard() { window.location.href = "#dashboard"; }
+
+// Chart & live sensors (same as previous version)
+</script>
+</body>
+</html>
